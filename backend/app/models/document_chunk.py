@@ -1,0 +1,36 @@
+from sqlalchemy import (
+    Column,
+    Integer,
+    ForeignKey,
+    Text
+)
+
+from sqlalchemy.orm import relationship
+
+from backend.app.database.database import Base
+
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    document_id = Column(
+        Integer,
+        ForeignKey("documents.id"),
+        nullable=False
+    )
+
+    chunk_text = Column(
+        Text,
+        nullable=False
+    )
+
+    embedding = Column(
+        Text,
+        nullable=False
+    )
+
+    document = relationship(
+        "Document"
+    )
