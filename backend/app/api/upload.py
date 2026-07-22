@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 
 import os
 import shutil
-import PyPDF2
+from pypdf import PdfReader
 from sqlalchemy.orm import Session
 
 from backend.app.services.pdf_service import extract_text_from_pdf
