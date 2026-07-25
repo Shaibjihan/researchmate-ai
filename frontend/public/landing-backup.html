@@ -1,0 +1,1335 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ResearchMate AI — Your Research, Finally Understood.</title>
+    <meta name="description" content="RAG-powered research assistant that lets you upload PDFs and run semantic context queries with cited evidence natively.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS RESET & VARIABLES */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #0A0B0F;
+            --bg-surface: #111318;
+            --bg-elevated: #1A1D25;
+            --accent-primary: #7C6FFF;
+            --accent-secondary: #2DD4BF;
+            --accent-highlight: #A78BFA;
+            --text-primary: #F0EEF8;
+            --text-secondary: #8B8FA8;
+            --text-tertiary: #4B4F65;
+            --border-rgba: rgba(255, 255, 255, 0.07);
+            --danger-orange: #F97316;
+            
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.75;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            overflow-x: hidden;
+        }
+
+        /* UTILITIES & STRUCTURAL LAYOUTS */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        section {
+            padding: 120px 0;
+            position: relative;
+        }
+
+        .section-alt {
+            background-color: #0D0F15;
+        }
+
+        .label-caps {
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+            display: inline-block;
+        }
+
+        .h1-hero {
+            font-family: var(--font-display);
+            font-size: 72px;
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -2px;
+            color: var(--text-primary);
+        }
+
+        .h2-section {
+            font-family: var(--font-display);
+            font-size: 48px;
+            font-weight: 600;
+            line-height: 1.2;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+
+        .h3-card {
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 1.4;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .text-muted {
+            color: var(--text-secondary);
+        }
+
+        .text-sub {
+            font-size: 19px;
+            max-width: 650px;
+            margin-bottom: 48px;
+        }
+
+        .mono-badge {
+            font-family: var(--font-mono);
+            font-size: 13px;
+        }
+
+        /* BUTTON ARCHITECTURE */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: var(--font-body);
+            font-size: 15px;
+            font-weight: 500;
+            padding: 12px 24px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: #FFFFFF;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(124, 111, 255, 0.4);
+            background-color: var(--accent-highlight);
+        }
+
+        .btn-ghost {
+            background-color: transparent;
+            border-color: var(--text-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-ghost:hover {
+            border-color: var(--text-primary);
+            background-color: rgba(255, 255, 255, 0.03);
+        }
+
+        /* SCROLL-ANIMATION STATES */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 1. NAVIGATION BAR */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+            border-bottom: 1px solid transparent;
+        }
+
+        header.scrolled {
+            background-color: rgba(10, 11, 15, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom-color: var(--border-rgba);
+        }
+
+        .nav-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 80px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            font-size: 15px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .link-signin {
+            color: var(--text-secondary);
+            font-size: 15px;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .link-signin:hover {
+            color: var(--text-primary);
+        }
+
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        /* 2. HERO SECTION */
+        .hero-section {
+            padding-top: 180px;
+            padding-bottom: 120px;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124, 111, 255, 0.12), transparent);
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .shimmer-text {
+            background: linear-gradient(to right, var(--text-primary) 20%, var(--accent-highlight) 50%, var(--text-primary) 80%);
+            background-size: 200% auto;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            -webkit-text-fill-color: transparent;
+            animation: textShimmer 4s linear infinite;
+            display: inline-block;
+            position: relative;
+        }
+
+        .shimmer-text::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 4px;
+            width: 100%;
+            height: 2px;
+            background: rgba(124, 111, 255, 0.4);
+        }
+
+        @keyframes textShimmer {
+            to { background-position: 200% center; }
+        }
+
+        .hero-sub {
+            font-size: 19px;
+            color: var(--text-secondary);
+            margin-top: 24px;
+            margin-bottom: 40px;
+            max-width: 580px;
+        }
+
+        .hero-ctas {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .social-proof {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 450px;
+            position: relative;
+            background: rgba(17, 19, 24, 0.3);
+            border-radius: 16px;
+            border: 1px solid var(--border-rgba);
+            overflow: hidden;
+        }
+
+        #streamCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 3. CREDIBILITY BAR */
+        .credibility-bar {
+            padding: 40px 0;
+            border-top: 1px solid var(--border-rgba);
+            border-bottom: 1px solid var(--border-rgba);
+            background-color: #0A0B0F;
+            text-align: center;
+        }
+
+        .credibility-title {
+            font-size: 13px;
+            font-family: var(--font-body);
+            color: var(--text-tertiary);
+            letter-spacing: 0.1em;
+            margin-bottom: 24px;
+        }
+
+        .badge-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .tech-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-rgba);
+            padding: 6px 14px;
+            border-radius: 20px;
+            color: var(--text-secondary);
+        }
+
+        /* 4. CORE FEATURES GRID */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 56px;
+        }
+
+        .feature-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-rgba);
+            border-radius: 16px;
+            padding: 40px;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(124, 111, 255, 0.4);
+            box-shadow: 0 0 0 1px rgba(124, 111, 255, 0.15);
+        }
+
+        .card-icon-frame {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.02);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-rgba);
+        }
+
+        .card-icon-frame.teal-frame svg { color: var(--accent-secondary); fill: rgba(45, 212, 191, 0.1); }
+        .card-icon-frame.violet-frame svg { color: var(--accent-primary); fill: rgba(124, 111, 255, 0.1); }
+
+        /* 5. HOW IT WORKS */
+        .process-flow {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-top: 64px;
+            position: relative;
+        }
+
+        .process-step {
+            position: relative;
+            z-index: 2;
+        }
+
+        .step-number-bg {
+            font-family: var(--font-display);
+            font-size: 80px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.02);
+            line-height: 1;
+            margin-bottom: -20px;
+        }
+
+        .process-card {
+            background-color: rgba(17, 19, 24, 0.4);
+            border: 1px solid var(--border-rgba);
+            padding: 32px;
+            border-radius: 16px;
+        }
+
+        .process-card p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .connector-line {
+            position: absolute;
+            top: 120px;
+            left: 10%;
+            width: 80%;
+            height: 1px;
+            border-top: 1px dashed var(--text-tertiary);
+            z-index: 1;
+            opacity: 0.4;
+        }
+
+        /* 6. LIVE PRODUCT DEMO */
+        .demo-browser {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-rgba);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+            margin-top: 56px;
+        }
+
+        .browser-chrome {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-rgba);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chrome-dots {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--text-tertiary);
+        }
+
+        .chrome-search {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-rgba);
+            border-radius: 6px;
+            padding: 4px 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            width: 400px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .browser-viewport {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            height: 520px;
+        }
+
+        .viewport-sidebar {
+            background-color: rgba(0, 0, 0, 0.15);
+            border-right: 1px solid var(--border-rgba);
+            padding: 24px;
+        }
+
+        .sidebar-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            margin-bottom: 16px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .sidebar-item.active {
+            background-color: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .viewport-main {
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: rgba(10, 11, 15, 0.4);
+            overflow-y: auto;
+        }
+
+        .chat-messages {
+            margin-bottom: 24px;
+            max-width: 85%;
+        }
+
+        .chat-bubble.user {
+            margin-left: auto;
+            background-color: var(--bg-elevated);
+            padding: 12px 18px;
+            border-radius: 12px 12px 2px 12px;
+            border: 1px solid var(--border-rgba);
+            font-size: 15px;
+        }
+
+        .chat-bubble.ai {
+            margin-right: auto;
+        }
+
+        .ai-source-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: rgba(45, 212, 191, 0.06);
+            border: 1px solid rgba(45, 212, 191, 0.2);
+            color: var(--accent-secondary);
+            font-size: 12px;
+            padding: 2px 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .ai-quote-block {
+            border-left: 2px solid var(--accent-secondary);
+            padding-left: 14px;
+            margin: 12px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+            font-size: 15px;
+        }
+
+        .viewport-input-mock {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-rgba);
+            border-radius: 8px;
+            padding: 14px 18px;
+            color: var(--text-tertiary);
+            font-size: 14px;
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* 7. USE CASES */
+        .use-cases-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 56px;
+        }
+
+        .use-case-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-rgba);
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .use-case-card p {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        /* 8. TECHNICAL HIGHLIGHTS */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: 0.9fr 1.1fr;
+            gap: 64px;
+            align-items: center;
+        }
+
+        .tech-list {
+            list-style: none;
+            margin-top: 32px;
+        }
+
+        .tech-list li {
+            position: relative;
+            padding-left: 28px;
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+
+        .tech-list li::before {
+            content: '✦';
+            position: absolute;
+            left: 0;
+            color: var(--accent-primary);
+        }
+
+        .terminal-block {
+            background-color: #06070a;
+            border: 1px solid var(--border-rgba);
+            border-radius: 12px;
+            padding: 24px;
+            font-family: var(--font-mono);
+            font-size: 14px;
+            line-height: 1.6;
+            overflow-x: auto;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.8);
+        }
+
+        .t-comment { color: var(--text-tertiary); }
+        .t-keyword { color: #F43F5E; }
+        .t-string { color: var(--accent-secondary); }
+        .t-func { color: var(--accent-highlight); }
+
+        /* 9. PRICING SECTION */
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 56px;
+            align-items: stretch;
+        }
+
+        .pricing-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-rgba);
+            border-radius: 16px;
+            padding: 40px 32px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .pricing-card.popular {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 30px rgba(124,111,255,0.1);
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background-color: var(--accent-primary);
+            color: #FFFFFF;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .price-num {
+            font-family: var(--font-display);
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 16px 0;
+        }
+
+        .price-num span {
+            font-size: 16px;
+            font-family: var(--font-body);
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .price-features {
+            list-style: none;
+            margin: 24px 0;
+            margin-top: auto;
+        }
+
+        .price-features li {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .price-features li::before {
+            content: '✓';
+            color: var(--accent-secondary);
+        }
+
+        /* 10. CTA / FOOTER */
+        .footer-cta-container {
+            text-align: center;
+            padding-bottom: 64px;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid var(--border-rgba);
+            padding-top: 40px;
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        .footer-credit {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .footer-social-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .footer-social-links a {
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .footer-social-links a:hover {
+            color: var(--text-primary);
+        }
+
+        /* STAGGERED HERO LOAD ANIMATION */
+        .hero-stagger-1 { animation: heroUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .hero-stagger-2 { animation: heroUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards; opacity: 0; }
+        .hero-stagger-3 { animation: heroUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.16s forwards; opacity: 0; }
+
+        @keyframes heroUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* SYSTEM USER ACCESSIBILITY */
+        @media (prefers-reduced-motion: reduce) {
+            .reveal, .hero-stagger-1, .hero-stagger-2, .hero-stagger-3, .feature-card, .btn {
+                transition: none !important;
+                animation: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+            #streamCanvas { display: none; }
+        }
+
+        /* RESPONSIVE BREAKPOINTS */
+        @media (max-width: 1024px) {
+            .h1-hero { font-size: 56px; }
+            .hero-grid { grid-template-columns: 1fr; }
+            .canvas-container { height: 350px; }
+            .tech-grid { grid-template-columns: 1fr; gap: 40px; }
+        }
+
+        @media (max-width: 768px) {
+            section { padding: 80px 0; }
+            .h1-hero { font-size: 42px; }
+            .h2-section { font-size: 34px; }
+            .nav-links, .nav-actions { display: none; }
+            .mobile-toggle { display: block; }
+            .features-grid, .process-flow, .use-cases-row, .pricing-grid { grid-template-columns: 1fr; }
+            .connector-line { display: none; }
+            .browser-viewport { grid-template-columns: 1fr; }
+            .viewport-sidebar { display: none; }
+            .chrome-search { width: 100%; }
+            .footer-bottom { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <header id="mainHeader">
+        <div class="container nav-container">
+            <a href="#" class="logo" aria-label="ResearchMate AI home">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><path d="m12 15 3 3"/></svg>
+                ResearchMate AI
+            </a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#process">How it Works</a></li>
+                <li><a href="#usecases">Use Cases</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="#" class="link-signin">Sign In</a>
+                <a href="#" class="btn btn-primary">Try Free</a>
+            </div>
+            <button class="mobile-toggle" aria-label="Toggle navigation structural layer menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero-section">
+            <div class="container hero-grid">
+                <div class="hero-left">
+                    <h1 class="h1-hero hero-stagger-1">
+                        Your Research,<br><span class="shimmer-text">Finally Understood.</span>
+                    </h1>
+                    <p class="hero-sub hero-stagger-2">
+                        Upload any PDF. Ask anything. Get precise, cited answers instantly. ResearchMate AI uses Gemini AI and semantic vector search to make your documents actually talk back.
+                    </p>
+                    <div class="hero-ctas hero-stagger-3">
+                        <a href="#" class="btn btn-primary">Start for Free &rarr;</a>
+                        <a href="#" class="btn btn-ghost">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            Watch Demo
+                        </a>
+                    </div>
+                    <div class="social-proof hero-stagger-3">
+                        <span>✦ No credit card required</span>
+                        <span>✦ Works with any PDF</span>
+                        <span>✦ Instant setup</span>
+                    </div>
+                </div>
+                <div class="hero-right hero-stagger-2">
+                    <div class="canvas-container">
+                        <canvas id="streamCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="credibility-bar">
+            <div class="container">
+                <div class="credibility-title">BUILT WITH ENTERPRISE-GRADE TECHNOLOGY</div>
+                <div class="badge-row">
+                    <div class="tech-badge mono-badge"><span>♊</span> Gemini AI</div>
+                    <div class="tech-badge mono-badge">⚡ FastAPI</div>
+                    <div class="tech-badge mono-badge">🐘 PostgreSQL</div>
+                    <div class="tech-badge mono-badge">🔑 JWT Auth</div>
+                    <div class="tech-badge mono-badge">🐍 Python</div>
+                    <div class="tech-badge mono-badge">🔍 Vector Search</div>
+                    <div class="tech-badge mono-badge">🧠 RAG Pipeline</div>
+                </div>
+            </div>
+        </div>
+
+        <section id="features" class="section-alt">
+            <div class="container">
+                <div class="reveal">
+                    <span class="label-caps">Core Capabilities</span>
+                    <h2 class="h2-section">From Upload to Insight in Seconds</h2>
+                    <p class="text-muted text-sub">Everything you need to turn a stack of PDFs into a knowledge base you can talk to directly.</p>
+                </div>
+                
+                <div class="features-grid">
+                    <div class="feature-card reveal">
+                        <div class="card-icon-frame teal-frame">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <h3 class="h3-card">Upload Any PDF, Instantly</h3>
+                        <p class="text-muted">Drag and drop any research paper, financial statement, or book. ResearchMate AI chunks and indexes it in seconds without losing semantic integrity.</p>
+                    </div>
+                    <div class="feature-card reveal">
+                        <div class="card-icon-frame violet-frame">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        </div>
+                        <h3 class="h3-card">Ask Questions, Get Cited Answers</h3>
+                        <p class="text-muted">Chat naturally with your documents. Every response maps back to precise source strings, preventing systemic hallucinations completely.</p>
+                    </div>
+                    <div class="feature-card reveal">
+                        <div class="card-icon-frame teal-frame">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        </div>
+                        <h3 class="h3-card">Search by Meaning, Not Keywords</h3>
+                        <p class="text-muted">Query abstract matching concepts using vector embeddings. Locate hard semantic intersections across rows even when wording matches vary.</p>
+                    </div>
+                    <div class="feature-card reveal">
+                        <div class="card-icon-frame violet-frame">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+                        </div>
+                        <h3 class="h3-card">Connect Ideas Across Documents</h3>
+                        <p class="text-muted">Synthesize queries spanning multiple distinct PDF assets natively. Surface unified correlations between different papers inside the same vault window.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="process">
+            <div class="container">
+                <div class="reveal" style="text-align: center;">
+                    <span class="label-caps">The Process</span>
+                    <h2 class="h2-section">Three Steps. Then Pure Research Velocity.</h2>
+                </div>
+
+                <div class="process-flow">
+                    <div class="connector-line"></div>
+                    
+                    <div class="process-step reveal">
+                        <div class="step-number-bg">01</div>
+                        <div class="process-card">
+                            <h3 class="h3-card" style="font-size:18px;">Upload Library</h3>
+                            <p>Drop in standalone docs or massive multi-file packages securely managed via secure JWT-authenticated stateless sessions.</p>
+                        </div>
+                    </div>
+
+                    <div class="process-step reveal">
+                        <div class="step-number-bg">02</div>
+                        <div class="process-card">
+                            <h3 class="h3-card" style="font-size:18px;">Vector Encoding</h3>
+                            <p>Our ingestion microservice fragments blocks and embeds data arrays straight into our indexing tables handled natively in PostgreSQL.</p>
+                        </div>
+                    </div>
+
+                    <div class="process-step reveal">
+                        <div class="step-number-bg">03</div>
+                        <div class="process-card">
+                            <h3 class="h3-card" style="font-size:18px;">Context Extraction</h3>
+                            <p>Run complex RAG prompts directly against Gemini AI. Receive complete answers cleanly derived from exact source text lines.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-alt">
+            <div class="container">
+                <div class="reveal" style="text-align: center;">
+                    <h2 class="h2-section">See It In Action</h2>
+                </div>
+
+                <div class="demo-browser reveal">
+                    <div class="browser-chrome">
+                        <div class="chrome-dots">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+                        <div class="chrome-search">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            researchmate.ai/workspace/chat
+                        </div>
+                        <div></div>
+                    </div>
+                    <div class="browser-viewport">
+                        <div class="viewport-sidebar">
+                            <div class="sidebar-title">Indexed Assets</div>
+                            <div class="sidebar-item active">
+                                <span>📄</span> IPCC_Report_2026.pdf
+                            </div>
+                            <div class="sidebar-item">
+                                <span>📄</span> Macro_Trends_Data.pdf
+                            </div>
+                            <div class="sidebar-item">
+                                <span>📄</span> Case_Study_09.pdf
+                            </div>
+                        </div>
+                        <div class="viewport-main">
+                            <div class="chat-messages">
+                                <div class="chat-bubble user">
+                                    What are the key findings about climate adaptation in Chapter 3?
+                                </div>
+                                <div class="chat-bubble ai">
+                                    <div class="ai-source-pill">✔ Cited Reference: IPCC_Report_2026.pdf · Page 47</div>
+                                    <p style="font-size:15px; color:var(--text-primary);">The primary finding points to highly accelerated infrastructure risks in urban zones. The adaptation window is tightening significantly due to compounding heat-island patterns.</p>
+                                    <div class="ai-quote-block">
+                                        "Infrastructure built under 2010 assumptions fails completely to account for the localized microclimate convergence now witnessed across coastal industrial clusters."
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="viewport-input-mock">
+                                <span>Ask a question about your documents...</span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="usecases">
+            <div class="container">
+                <div class="reveal" style="text-align: center;">
+                    <span class="label-caps">Who It's For</span>
+                    <h2 class="h2-section">Built for Anyone Who Reads More Than They Have Time For</h2>
+                </div>
+
+                <div class="use-cases-row">
+                    <div class="use-case-card reveal">
+                        <h3 class="h3-card" style="font-size: 19px;">Academics & Researchers</h3>
+                        <p class="text-muted">Stop skimming lengthy 90-page assets manually trying to find hidden references. Query parameters directly and surface explicit citations immediately.</p>
+                    </div>
+                    <div class="use-case-card reveal">
+                        <h3 class="h3-card" style="font-size: 19px;">Legal & Compliance</h3>
+                        <p class="text-muted">Audit contracts, operational mandates, or dense dynamic clause briefs. Isolate liabilities using grounded context mapping without safety concerns.</p>
+                    </div>
+                    <div class="use-case-card reveal">
+                        <h3 class="h3-card" style="font-size: 19px;">Developers & Writers</h3>
+                        <p class="text-muted">Parse complex reference materials, system guidelines, or structural technical logs cleanly. Transform documentation tables into a smart workspace.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture" class="section-alt">
+            <div class="container tech-grid">
+                <div class="reveal">
+                    <span class="label-caps">Under The Hood</span>
+                    <h2 class="h2-section">Production-Grade Architecture</h2>
+                    <p class="text-muted">A modern stack engineered explicitly to guarantee rapid execution, strict data decoupling, and predictable retrieval paths.</p>
+                    <ul class="tech-list text-muted">
+                        <li><strong>FastAPI</strong> engine driving highly scalable asynchronous REST operations.</li>
+                        <li><strong>PostgreSQL</strong> instance tracking state variables and embedding lookups.</li>
+                        <li><strong>JWT Authentication</strong> handling continuous data protections.</li>
+                        <li><strong>RAG Processing</strong> leveraging Gemini AI APIs for clear contextual output.</li>
+                    </ul>
+                </div>
+                <div class="reveal">
+                    <div class="terminal-block">
+                        <span class="t-comment"># Query your documents with semantic precision</span><br>
+                        response = <span class="t-keyword">await</span> research_client.<span class="t-func">query</span>(<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;question=<span class="t-string">"What methodology was used?"</span>,<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;documents=[<span class="t-string">"paper_01.pdf"</span>, <span class="t-string">"paper_02.pdf"</span>],<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;mode=<span class="t-string">"cross_document"</span><br>
+                        )<br><br>
+                        <span class="t-comment"># Returns: answer + cited sources + page refs</span><br>
+                        <span class="t-func">print</span>(response.answer) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-comment"># "The study used..."</span><br>
+                        <span class="t-func">print</span>(response.citations) &nbsp;&nbsp;&nbsp;<span class="t-comment"># [{"doc": "paper_01.pdf", "page": 14}]</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="container">
+                <div class="reveal" style="text-align: center;">
+                    <h2 class="h2-section">Simple Pricing</h2>
+                    <p class="text-muted text-sub" style="margin: 0 auto 56px auto;">Pick the deployment tier tailored exactly to your reading overhead requirements.</p>
+                </div>
+
+                <div class="pricing-grid">
+                    <div class="pricing-card reveal">
+                        <h3 class="h3-card">Free</h3>
+                        <p class="text-muted" style="font-size:14px;">For individual research triage.</p>
+                        <div class="price-num">$0<span>/month</span></div>
+                        <ul class="price-features">
+                            <li>3 Document Limits</li>
+                            <li>50 Queries per Month</li>
+                            <li>Basic Vector Extraction</li>
+                        </ul>
+                        <button class="btn btn-ghost" style="width:100%; margin-top:24px;">Get Started</button>
+                    </div>
+
+                    <div class="pricing-card popular reveal">
+                        <div class="popular-badge">Most Popular</div>
+                        <h3 class="h3-card">Pro</h3>
+                        <p class="text-muted" style="font-size:14px;">For intense academic workloads.</p>
+                        <div class="price-num">$12<span>/month</span></div>
+                        <ul class="price-features">
+                            <li>Unlimited Documents</li>
+                            <li>Unlimited Ingestion Queries</li>
+                            <li>Cross-Document Inferences</li>
+                            <li>Priority Async Processing</li>
+                        </ul>
+                        <button class="btn btn-primary" style="width:100%; margin-top:24px;">Upgrade to Pro</button>
+                    </div>
+
+                    <div class="pricing-card reveal">
+                        <h3 class="h3-card">Team</h3>
+                        <p class="text-muted" style="font-size:14px;">For labs, agencies, and cohorts.</p>
+                        <div class="price-num">$39<span>/month</span></div>
+                        <ul class="price-features">
+                            <li>Shared Workspace Access</li>
+                            <li>Advanced Team Auditing</li>
+                            <li>Custom API Endpoint Routing</li>
+                            <li>24/7 Dedicated Priority Support</li>
+                        </ul>
+                        <button class="btn btn-ghost" style="width:100%; margin-top:24px;">Contact Sales</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-alt" style="border-top: 1px solid var(--border-rgba); padding-bottom: 40px;">
+            <div class="container footer-cta-container">
+                <div class="reveal">
+                    <h2 class="h2-section" style="margin-bottom:8px;">Start Researching Smarter Today</h2>
+                    <p class="text-muted" style="font-size:16px; margin-bottom:32px;">Join researchers and professionals who've stopped manually hunting through PDFs.</p>
+                    <a href="#" class="btn btn-primary" style="padding: 16px 40px; font-size:16px;">Get Started Free &rarr;</a>
+                    <p class="text-muted" style="font-size:13px; margin-top:16px; color:var(--text-tertiary);">No credit card. No setup overhead. Just drop files and interrogate context.</p>
+                </div>
+
+                <div class="footer-bottom">
+                    <div class="footer-credit">
+                        &copy; 2026 ResearchMate AI. All rights preserved.
+                    </div>
+                    <div class="footer-credit text-muted">
+                        Built by <strong>Shahib Hasan Jihan</strong>
+                    </div>
+                    <div class="footer-social-links">
+                        <a href="#" aria-label="GitHub Repository">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                        </a>
+                        <a href="#" aria-label="LinkedIn Profile">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // HEADER INTERACTION MANAGEMENT
+        const header = document.getElementById('mainHeader');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 80) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // VIEWPORT SCROLL DETECTION REVEALS
+        const revealElements = document.querySelectorAll('.reveal');
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+        revealElements.forEach(el => revealObserver.observe(el));
+
+        // CANVAS VECTOR STREAM ENGINE (30FPS CLAMPED)
+        const canvas = document.getElementById('streamCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width = canvas.width = canvas.offsetWidth;
+        let height = canvas.height = canvas.offsetHeight;
+
+        window.addEventListener('resize', () => {
+            if (!canvas) return;
+            width = canvas.width = canvas.offsetWidth;
+            height = canvas.height = canvas.offsetHeight;
+        });
+
+        const entities = [];
+        const maxParticles = 25;
+
+        class DocumentParticle {
+            constructor() {
+                this.reset();
+                this.y = Math.random() * height; // Distribute on init load
+            }
+
+            reset() {
+                this.x = Math.random() * (width * 0.6) + (width * 0.2);
+                this.y = height + Math.random() * 40;
+                this.speed = Math.random() * 0.8 + 0.4;
+                this.scaleX = Math.random() * 20 + 25;
+                this.scaleY = this.scaleX * 1.3;
+                this.alpha = Math.random() * 0.3 + 0.2;
+                this.state = 'document'; // 'document' -> 'transition' -> 'node'
+                this.transitionProgress = 0;
+            }
+
+            draw() {
+                ctx.save();
+                if (this.y < height * 0.45 && this.state === 'document') {
+                    this.state = 'transition';
+                }
+
+                if (this.state === 'document') {
+                    // Render document fragments
+                    ctx.strokeStyle = `rgba(240, 238, 248, ${this.alpha})`;
+                    ctx.fillStyle = `rgba(17, 19, 24, ${this.alpha})`;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.rect(this.x - this.scaleX/2, this.y, this.scaleX, this.scaleY);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Tiny placeholder text line mockups inside document rectangles
+                    ctx.strokeStyle = `rgba(139, 143, 168, ${this.alpha * 0.5})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x - this.scaleX/3, this.y + 8);
+                    ctx.lineTo(this.x + this.scaleX/3, this.y + 8);
+                    ctx.moveTo(this.x - this.scaleX/3, this.y + 16);
+                    ctx.lineTo(this.x + this.scaleX/4, this.y + 16);
+                    ctx.stroke();
+
+                } else if (this.state === 'transition') {
+                    this.transitionProgress += 0.02;
+                    let currentAlpha = this.alpha * (1 - this.transitionProgress);
+                    
+                    // Fade abstract sheet bounding frame
+                    ctx.strokeStyle = `rgba(240, 238, 248, ${currentAlpha})`;
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(this.x - this.scaleX/2, this.y, this.scaleX, this.scaleY);
+
+                    // Evolve exploding nodes values
+                    let nodeAlpha = this.transitionProgress;
+                    ctx.fillStyle = `rgba(45, 212, 191, ${nodeAlpha})`;
+                    ctx.shadowColor = '#2DD4BF';
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (this.transitionProgress >= 1) {
+                        this.state = 'node';
+                    }
+
+                } else if (this.state === 'node') {
+                    // Semantic vector points scattering logic
+                    this.y -= this.speed * 1.5;
+                    let nodeLife = (this.y / (height * 0.45)); // Fade out completely near top border
+                    if (nodeLife < 0) nodeLife = 0;
+
+                    ctx.fillStyle = `rgba(124, 111, 255, ${nodeLife})`;
+                    ctx.shadowColor = '#7C6FFF';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Render mesh connection lines between coordinates to indicate clustered RAG queries
+                    entities.forEach(other => {
+                        if (other !== this && other.state === 'node') {
+                            let dist = Math.hypot(this.x - other.x, this.y - other.y);
+                            if (dist < 75) {
+                                ctx.strokeStyle = `rgba(45, 212, 191, ${(1 - dist/75) * 0.15 * nodeLife})`;
+                                ctx.shadowBlur = 0;
+                                ctx.lineWidth = 0.5;
+                                ctx.beginPath();
+                                ctx.moveTo(this.x, this.y);
+                                ctx.lineTo(other.x, other.y);
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                }
+
+                ctx.restore();
+            }
+
+            update() {
+                this.y -= this.speed;
+                if (this.y < -40) {
+                    this.reset();
+                }
+            }
+        }
+
+        // Initialize particles array loop
+        for (let i = 0; i < maxParticles; i++) {
+            entities.push(new DocumentParticle());
+        }
+
+        let lastFrameTime = performance.now();
+        const fpsInterval = 1000 / 30; // Clamp at standard rendering budget targets
+        let isTabActive = true;
+
+        function runStream() {
+            if (!isTabActive) return;
+            requestAnimationFrame(runStream);
+
+            const now = performance.now();
+            const elapsed = now - lastFrameTime;
+
+            if (elapsed > fpsInterval) {
+                lastFrameTime = now - (elapsed % fpsInterval);
+
+                ctx.clearRect(0, 0, width, height);
+                entities.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+            }
+        }
+
+        // Halt matrix vectors calculation thread context if viewer switches screen focuses
+        document.addEventListener('visibilitychange', () => {
+            isTabActive = !document.hidden;
+            if (isTabActive) {
+                lastFrameTime = performance.now();
+                runStream();
+            }
+        });
+
+        // Initialize canvas pipeline
+        runStream();
+    </script>
+</body>
+</html>
+
+
