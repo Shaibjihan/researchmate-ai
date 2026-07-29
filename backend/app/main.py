@@ -11,7 +11,11 @@ from backend.app.api.document import router as document_router
 from backend.app.api.summarize import router as summarize_router
 from backend.app.api.chat import router as chat_router
 from backend.app.api.search import router as search_router
-
+from backend.app.api.profile import router as profile_router
+from sqlalchemy.orm import Session
+from backend.app.database.database import get_db
+from backend.app.models.document import Document
+from backend.app.models.chat_history import ChatHistory
 
 
 
@@ -62,6 +66,14 @@ app.include_router(upload_router, prefix="/upload", tags=["Upload"])
 app.include_router(document_router, prefix="/documents", tags=["Documents"])
 
 app.include_router(
+    profile_router,
+    prefix="/profile",
+    tags=["Profile"],
+)
+
+
+
+app.include_router(
     summarize_router,
     prefix="/ai",
     tags=["AI"]
@@ -83,11 +95,29 @@ app.include_router(
 # TEST AUTH
 # -----------------------------
 @app.get("/test-auth")
-def test_auth(current_user=Depends(get_current_user)):
+def test_auth(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    document_count = (
+        db.query(Document)
+        .filter(Document.user_id == current_user.id)
+        .count()
+    )
+
+    chat_count = (
+        db.query(ChatHistory)
+        .filter(ChatHistory.user_id == current_user.id)
+        .count()
+    )
+
     return {
         "id": current_user.id,
         "username": current_user.username,
         "email": current_user.email,
+        "documents": document_count,
+        "chat_history": chat_count,
+        "member_since": current_user.created_at,
     }
 
 

@@ -32,6 +32,11 @@ export default function Sidebar() {
       icon: "🔎",
       path: "/search",
     },
+    {
+      label: "Profile",
+      icon: "👤",
+      path: "/profile",
+    },
   ];
 
   return (
